@@ -47,54 +47,113 @@ class ToepPlayer:
         previous_play: ToepPlay,
     ) -> None:
         pass
+            
+      
+import random
 
 
 class ToepController:
-    SUITS: list[str] = ["♠", "♣", "♥", "♦"]
-    RANKS: list[str] = ["J", "Q", "K", "A", "7", "8", "9", "10"]
-    RANK_STRENGTH = {
-        rank: i for i, rank in enumerate(RANKS)
-    }  # Not sure how to use this in code.
+    SUITS = ["♠", "♣", "♥", "♦"]
+    RANKS = ["J", "Q", "K", "A", "7", "8", "9", "10"]
+    RANK_STRENGTH = {rank: i for i, rank in enumerate(RANKS)}
 
-    ante = 1 #This is the score awarded to the loser, it is += 1 every time Toep is called
-    
-    def __init__(self) -> None:
+    def __init__(self):
         self._players = []
-
-    def join(self, player: ToepPlayer):
+        
+    def join(self, player):
         if player not in self._players:
             self._players.append(player)
-
-    def _shuffle_and_divide(self) -> list[list[tuple[str, str]]]:
+            
+    def _shuffle_and_divide(self):
         deck = [(rank, suit) for suit in self.SUITS for rank in self.RANKS]
         random.shuffle(deck)
-        hands = [[] for _ in self._players]
+        hands = []
         for i in range(len(self._players)):
-            hands[i] = deck[i * 4 : (i + 1) * 4]
+            hands.append(deck[i * 4:(i + 1) * 4])
         return hands
 
-    def play(self, *, debug=False) -> int:  #type: ignore
+    def _trick_winner(self, trick):
+        lead_suit = trick[0][1][1]
+        valid_cards = [
+            (p, card)
+            for (p, card) in trick
+            if card[1] == lead_suit
+        ]
+        winner = max(
+            valid_cards,
+            key=lambda x: self.RANK_STRENGTH[x[1][0]]
+        )
+        return winner[0]
+
+    def play(self, *, debug=False):
         hands = self._shuffle_and_divide()
         for i, player in enumerate(self._players):
-            player.start_game(i, tuple(hands[i]))   #start game signal
-        current_suit = 0
-        current_rank = 0
-        current_player = 0
-        lead_suit = 0
+            player.start_game(i, tuple(hands[i]))
+        starting_player = 0
         winner = None
-        last_action: list[str] = []
-        last_play: ToepPlay | None = None   #Either the agent responds to a play or makes the first play. 
-        while (
-            winner is None
-        ):
+        for trick_number in range(4):
+            trick = []
+            lead_suit = None
             if debug:
-                for player in range(len(self._players)):
-                    print(f"Player {player} has hand {sorted(hands[player])}")
-                    print("Current suit is", self.SUITS[current_suit])
-                    print("Current rank is", self.RANKS[current_rank])
-                    #NEED TO ADD MORE DEBUG INFO HERE 
-            if len(hands[current_player]) == 0 and last_action is not None: 
-        
+                print("\n--- TRICK", trick_number + 1, "---")
+            for i in range(len(self._players)):
+                player_id = (starting_player + i) % len(self._players)
+                if debug:
+                    print("\n--- TURN ---")
+                    for pid, hand in enumerate(hands):
+                        print(f"Player {pid} hand:", sorted(hand))
+                    print("Current trick:", trick)
+                    print("Lead suit:", lead_suit)
+                    print("Current player:", player_id)
+                card = self._players[player_id].take_turn(
+                    tuple(hands[player_id]),
+                    len(self._players),
+                    lead_suit,
+                    trick
+                )
+                if card not in hands[player_id]:
+                    raise ValueError("Illegal card played")
+                # FOLLOW SUIT RULE
+                if lead_suit is not None:
+                    player_suits = [c[1] for c in hands[player_id]]
+                    if lead_suit in player_suits and card[1] != lead_suit:
+                        raise ValueError(
+                            f"Player {player_id} failed to follow suit"
+                        )
+                hands[player_id].remove(card)
+                if lead_suit is None:
+                    lead_suit = card[1]
+                trick.append((player_id, card))
+                if debug:
+                    print("Player", player_id, "plays", card)
+                for p in range(len(self._players)):
+                    self._players[p].observe_play(
+                        tuple(hands[p]),
+                        len(self._players),
+                        lead_suit,
+                        player_id,
+                        card
+                    )
+            winner = self._trick_winner(trick)
+            starting_player = winner
+            if debug:
+                print("Trick winner:", winner)
+        if debug:
+            print("\nGame winner:", winner)
+        return winner
+      
+    def repeated_games(
+        self,
+        number_of_games: int,
+        *,
+        win_score: int = 1,
+    ) -> list[int]:
+        total_score = [0 for _ in range(len(self._players))]
+        for _ in range(number_of_games):
+            winner = self.play()  # your play() returns an int
+            total_score[winner] += win_score # type: ignore
+        return total_score
+      
         
 if __name__ == "__main__":
     controller = ToepController()
@@ -108,11 +167,3 @@ if __name__ == "__main__":
     # simple correctness checks
     all_cards = [card for hand in hands for card in hand]
     print("\nTotal cards dealt:", len(all_cards))
-
-
-#Current problems: 
-# Implementing Toepen logic (but this is should be done in the ToMk player logic, anyway), maybe for simplicity leave this for later 
-# Implementing meegaan / pass logic (but this is should be done in the ToMk player logic, anyway) 
-# Implementing 4 plays in a round logic 
-# Implementing kleur bekennen logic (but this is should be done in the ToMk player logic, anyway)  
-# Implementing turn-taking logic, where the winner gets to play the first card. 
