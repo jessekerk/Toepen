@@ -1,17 +1,17 @@
 #For simplicity, this version of toepen ends the game when the final card is played, 
 # not when the final card is played after 15 rounds as is customary. 
-
+# |
 import random
 
 
 class ToepPlay:
-    def __init__(self, count: int, suit: str, player_id: int) -> None:
-        self.count = count
+    def __init__(self, rank: str, suit: str, player_id: int) -> None:
+        self.rank = rank
         self.suit = suit
         self.player_id = player_id
 
     def __str__(self) -> str:
-        return f"{self.count} x {self.suit} played by {self.player_id}"
+        return f"{self.rank} x {self.suit} played by {self.player_id}"
 
 
 class ToepPlayer:
@@ -38,18 +38,29 @@ class ToepPlayer:
     ) -> None:
         pass
 
-    def observe_toep(
+    def call_toep(
         self,
         cards: tuple[str],
-        player_count: int,
-        current_suit: str,
-        player_id: int,
-        previous_play: ToepPlay,
-    ) -> None:
+        ante: int) -> str | None:
         pass
-            
-      
-import random
+
+
+    def respond_to_toep(
+        self,
+        cards: tuple[str],
+        ante: int,
+    ) -> str:   #type: ignore
+        #Return either "MEEGAAN" to keep playing and up the ante, or "PASS" when one does not expect to win. 
+        pass
+    
+    
+    def call_witte_was(self, 
+        cards: tuple[str]) -> str | None:
+      pass      
+  
+    def respond_to_witte_was(self, 
+        cards: tuple[str]) -> str:    #type: ignore 
+        pass
 
 
 class ToepController:
@@ -70,26 +81,77 @@ class ToepController:
         hands = []
         for i in range(len(self._players)):
             hands.append(deck[i * 4:(i + 1) * 4])
-        return hands
-
+        pile = deck[len(self._players) * 4:]
+        return hands, pile
+    
     def _trick_winner(self, trick):
-        lead_suit = trick[0][1][1]
-        valid_cards = [
-            (p, card)
-            for (p, card) in trick
-            if card[1] == lead_suit
-        ]
-        winner = max(
-            valid_cards,
-            key=lambda x: self.RANK_STRENGTH[x[1][0]]
-        )
-        return winner[0]
-
+        lead_suit = trick[0].suit
+        valid_cards = [play for play in trick if play.suit == lead_suit]
+        winner = max(valid_cards, key=lambda x: self.RANK_STRENGTH[x.rank])
+        return winner.player_id
+    
+    def _handle_toep(self, caller, hands, ante, debug):
+        for p in range(len(self._players)):
+            if p == caller:
+                continue
+            response = self._players[p].respond_to_toep(tuple(hands[p]), ante)
+            if debug:
+                print(f"Player {p} -> {response}")
+            if response == "PASS":
+                if debug:
+                    print(f"Player {p} passes. Player {caller} wins {ante}")
+                return caller, ante
+        ante += 1
+        if debug:
+            print("All players meegaan. Ante =", ante)
+        return None, ante
+    
+    def _handle_witte_was(self, caller, hands, pile, scores, debug):
+        doubters = []
+        for p in range(len(self._players)):
+            if p == caller:
+                continue
+            response = self._players[p].respond_to_witte_was(tuple(hands[p]))
+            if debug:
+                print(f"Player {p} -> {response}")
+            if response == "DOUBT":
+                doubters.append(p)
+        hand = hands[caller]
+        has_witte_was = all(card[0] in ["J", "Q", "K", "A"] for card in hand)
+        if not doubters:
+            if debug:
+                print("Everyone believes the claim.")
+            if len(pile) >= 4:
+                hands[caller] = pile[:4]
+                del pile[:4]
+            return
+        if not has_witte_was:
+            if debug:
+                print("False witte was! Caller gets penalty.")
+            scores[caller] += 1
+            return
+        if has_witte_was:
+            if debug:
+                print("Correct witte was! Doubters get penalty.")
+            for p in doubters:
+                scores[p] += 1
+            if len(pile) >= 4:
+                hands[caller] = pile[:4]
+                del pile[:4]
+                
     def play(self, *, debug=False):
-        hands = self._shuffle_and_divide()
+        hands, pile = self._shuffle_and_divide()
         for i, player in enumerate(self._players):
             player.start_game(i, tuple(hands[i]))
+        scores = [0]*len(self._players)
+        for player_id, player in enumerate(self._players):
+            action = player.call_witte_was(tuple(hands[player_id]))
+            if action == "WITTE_WAS":
+                if debug:
+                    print(f"Player {player_id} claims WITTE WAS")
+                self._handle_witte_was(player_id, hands, pile, scores, debug)
         starting_player = 0
+        ante = 1
         winner = None
         for trick_number in range(4):
             trick = []
@@ -102,68 +164,44 @@ class ToepController:
                     print("\n--- TURN ---")
                     for pid, hand in enumerate(hands):
                         print(f"Player {pid} hand:", sorted(hand))
-                    print("Current trick:", trick)
+                    print("Current trick:", [str(p) for p in trick])
                     print("Lead suit:", lead_suit)
                     print("Current player:", player_id)
-                card = self._players[player_id].take_turn(
-                    tuple(hands[player_id]),
-                    len(self._players),
-                    lead_suit,
-                    trick
-                )
+                action = self._players[player_id].call_toep(tuple(hands[player_id]), ante)
+                if action == "TOEP":
+                    if debug:
+                        print(f"Player {player_id} calls TOEP")
+                    result, ante = self._handle_toep(player_id, hands, ante, debug)
+                    if result is not None:
+                        return result
+                card = self._players[player_id].take_turn(tuple(hands[player_id]), len(self._players), lead_suit, trick)
                 if card not in hands[player_id]:
                     raise ValueError("Illegal card played")
-                # FOLLOW SUIT RULE
+                rank, suit = card
                 if lead_suit is not None:
                     player_suits = [c[1] for c in hands[player_id]]
-                    if lead_suit in player_suits and card[1] != lead_suit:
-                        raise ValueError(
-                            f"Player {player_id} failed to follow suit"
-                        )
+                    if lead_suit in player_suits and suit != lead_suit:
+                        raise ValueError(f"Player {player_id} failed to follow suit")
                 hands[player_id].remove(card)
                 if lead_suit is None:
-                    lead_suit = card[1]
-                trick.append((player_id, card))
+                    lead_suit = suit
+                play = ToepPlay(rank, suit, player_id)
+                trick.append(play)
                 if debug:
-                    print("Player", player_id, "plays", card)
+                    print(play)
                 for p in range(len(self._players)):
-                    self._players[p].observe_play(
-                        tuple(hands[p]),
-                        len(self._players),
-                        lead_suit,
-                        player_id,
-                        card
-                    )
+                    self._players[p].observe_play(tuple(hands[p]), len(self._players), lead_suit, player_id, play)
             winner = self._trick_winner(trick)
             starting_player = winner
             if debug:
                 print("Trick winner:", winner)
         if debug:
-            print("\nGame winner:", winner)
+            print("\nGame winner:", winner, "wins", ante)
         return winner
-      
-    def repeated_games(
-        self,
-        number_of_games: int,
-        *,
-        win_score: int = 1,
-    ) -> list[int]:
-        total_score = [0 for _ in range(len(self._players))]
+    
+    def repeated_games(self, number_of_games, *, win_score=1):
+        scores = [0 for _ in range(len(self._players))]
         for _ in range(number_of_games):
-            winner = self.play()  # your play() returns an int
-            total_score[winner] += win_score # type: ignore
-        return total_score
-      
-        
-if __name__ == "__main__":
-    controller = ToepController()
-    players = [ToepPlayer() for _ in range(2)]
-    for p in players:
-        controller.join(p)
-    hands = controller._shuffle_and_divide()
-    print("Hands dealt:\n")
-    for i, hand in enumerate(hands):
-        print(f"Player {i}: {hand}")
-    # simple correctness checks
-    all_cards = [card for hand in hands for card in hand]
-    print("\nTotal cards dealt:", len(all_cards))
+            winner = self.play(debug=False)
+            scores[winner] += win_score
+        return scores
