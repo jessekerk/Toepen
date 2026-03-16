@@ -1,5 +1,6 @@
 from toepen import ToepController
 from randomplayer import RandomPlayer
+from zeroorderplayer import ZeroOrderPlayer
 
 
 controller = ToepController()

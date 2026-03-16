@@ -1,6 +1,6 @@
 from toepen import ToepPlayer
 
-class FirstOrderPlayer(ToepPlayer):
+class ZeroOrderPlayer(ToepPlayer):
     
     def call_witte_was(self, cards: tuple[str]) -> str | None:
         face_cards = {"J","Q","K","A"}
