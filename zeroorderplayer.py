@@ -1,7 +1,7 @@
 import math
 import random
 
-from toepen import ToepPlay, ToepPlayer
+from toepen import ToepPlayer
 
 
 class ZeroOrderPlayer(ToepPlayer):
@@ -113,12 +113,12 @@ class ReasonableZeroOrderPlayer(ZeroOrderPlayer):
             if not previous_play:
                 return min(same_suit, key=lambda c: self.rank_strength[c[0]])
             # Find current highest card in trick
-            highest = max(previous_play, key=lambda p: self.rank_strength[p.rank])
+            highest = max(previous_play, key=lambda p: self.rank_strength[p.rank]) # type: ignore
             # Cards that can beat it
             winning_cards = [
                 c
                 for c in same_suit
-                if self.rank_strength[c[0]] > self.rank_strength[highest.rank]
+                if self.rank_strength[c[0]] > self.rank_strength[highest.rank] # type: ignore
             ]
             if winning_cards:
                 # play smallest card that still wins

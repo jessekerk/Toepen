@@ -208,5 +208,5 @@ class ToepController:
         scores = [0 for _ in range(len(self._players))]
         for _ in range(number_of_games):
             winner = self.play(debug=False)
-            scores[winner] += win_score
+            scores[winner] += win_score # type: ignore
         return scores

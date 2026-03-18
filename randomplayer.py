@@ -1,7 +1,6 @@
-from toepen import *
-from toepen import ToepPlay 
+from toepen import ToepPlayer 
 import random
-import math
+
 
 class RandomPlayer(ToepPlayer):
     def take_turn(self, cards, player_count, lead_suit, trick): #type: ignore
@@ -22,7 +21,7 @@ class RandomPlayer(ToepPlayer):
             return 'TOEP'
         return None
     
-    def respond_to_witte_was(self, cards: tuple[str, str]) -> str | None:
+    def respond_to_witte_was(self, cards: tuple[str, str]) -> str:
         return random.choice(["DOUBT", "BELIEVE"])
     
     def call_witte_was(self, cards: tuple[str, str]) -> str | None:        
