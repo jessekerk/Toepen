@@ -14,18 +14,18 @@ class RandomPlayer(ToepPlayer):
             return random.choice(same_suit)
         return random.choice(cards)
     
-    def respond_to_toep(self, cards: tuple[str], ante: int) -> str:
+    def respond_to_toep(self, cards: tuple[str, str], ante: int) -> str:
         return random.choice(['MEEGAAN', 'PASS'])
     
-    def call_toep(self, cards: tuple[str], ante: int) -> str | None:
+    def call_toep(self, cards: tuple[str, str], ante: int) -> str | None:
         if random.random() < 0.1:
             return 'TOEP'
         return None
     
-    def respond_to_witte_was(self, cards: tuple[str]) -> str | None:
+    def respond_to_witte_was(self, cards: tuple[str, str]) -> str | None:
         return random.choice(["DOUBT", "BELIEVE"])
     
-    def call_witte_was(self, cards: tuple[str]) -> str | None:        
+    def call_witte_was(self, cards: tuple[str, str]) -> str | None:        
         if random.random() <= 0.1:
             return "WITTE_WAS"
         return None

@@ -1,10 +1,9 @@
-from toepen import ToepController
 from randomplayer import RandomPlayer
-from zeroorderplayer import ZeroOrderPlayer
-
+from toepen import ToepController
+from zeroorderplayer import ZeroOrderPlayer, PessimisticZeroOrderPlayer, OptimisticZeroOrderPlayer, ReasonableZeroOrderPlayer  # noqa: F401
 
 controller = ToepController()
-controller.join(RandomPlayer())
-controller.join(RandomPlayer())
+controller.join(OptimisticZeroOrderPlayer())
+controller.join(ReasonableZeroOrderPlayer())
 controller.play(debug=True)
-print(controller.repeated_games(1000))
+print(controller.repeated_games(10000))

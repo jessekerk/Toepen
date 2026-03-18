@@ -3,8 +3,8 @@
 # |
 import random
 
-
 class ToepPlay:
+    #Might be redundant as all plays are just tuple[str, str]
     def __init__(self, rank: str, suit: str, player_id: int) -> None:
         self.rank = rank
         self.suit = suit
@@ -15,22 +15,24 @@ class ToepPlay:
 
 
 class ToepPlayer:
-    def start_game(self, identifier: int, cards: tuple[str]):
+    def start_game(self, identifier: int, cards: tuple[str], rank_strength):
         self.identifier = identifier
+        self.rank_strength = rank_strength
+        self.hand_strength = sum(rank_strength[rank] for rank, _ in cards)
 
     def take_turn(
         self,
-        cards: tuple[str],
+        cards: tuple[str, str],
         player_count: int,
         current_suit: str,
-        previous_play: ToepPlay,
-    ) -> ToepPlay:  # type: ignore
+        previous_play: tuple[str, str],
+    ) -> str:  # type: ignore
         # Here, current_rank will be the suit played by the previous opponent, or the rank the ToMx agent wants to play if he starts.
         pass
 
     def observe_play(
         self,
-        cards: tuple[str],
+        cards: tuple[str, str],
         player_count: int,
         current_suit: str,
         player_id: int,
@@ -40,14 +42,14 @@ class ToepPlayer:
 
     def call_toep(
         self,
-        cards: tuple[str],
+        cards: tuple[str, str],
         ante: int) -> str | None:
         pass
 
 
     def respond_to_toep(
         self,
-        cards: tuple[str],
+        cards: tuple[str, str],
         ante: int,
     ) -> str:   #type: ignore
         #Return either "MEEGAAN" to keep playing and up the ante, or "PASS" when one does not expect to win. 
@@ -55,11 +57,11 @@ class ToepPlayer:
     
     
     def call_witte_was(self, 
-        cards: tuple[str]) -> str | None:
+        cards: tuple[str, str]) -> str | None:
         pass      
   
     def respond_to_witte_was(self, 
-        cards: tuple[str]) -> str:    #type: ignore 
+        cards: tuple[str, str]) -> str:    #type: ignore 
         pass
 
 
@@ -145,7 +147,7 @@ class ToepController:
     def play(self, *, debug=False):
         hands, pile = self._shuffle_and_divide()
         for i, player in enumerate(self._players):
-            player.start_game(i, tuple(hands[i]))
+            player.start_game(i, tuple(hands[i]), self.RANK_STRENGTH)   #Now pass the rank strenght of hand at the start of game. 
         scores = [0]*len(self._players)
         for player_id, player in enumerate(self._players):
             action = player.call_witte_was(tuple(hands[player_id]))
