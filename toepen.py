@@ -11,7 +11,7 @@ class ToepPlay:
         self.player_id = player_id
 
     def __str__(self) -> str:
-        return f"{self.rank} x {self.suit} played by {self.player_id}"
+        return f"({self.rank}, {self.suit}) played by {self.player_id}"
 
 
 class ToepPlayer:
@@ -56,7 +56,7 @@ class ToepPlayer:
     
     def call_witte_was(self, 
         cards: tuple[str]) -> str | None:
-      pass      
+        pass      
   
     def respond_to_witte_was(self, 
         cards: tuple[str]) -> str:    #type: ignore 
@@ -129,6 +129,9 @@ class ToepController:
             if debug:
                 print("False witte was! Caller gets penalty.")
             scores[caller] += 1
+            if len(pile) >= 4:
+                hands[caller] = pile[:4]
+                del pile[:4]
             return
         if has_witte_was:
             if debug:
